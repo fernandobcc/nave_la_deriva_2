@@ -11,34 +11,27 @@ class PhaseChangeResponse(BaseModel):
     specific_volume_vapor: float
 
 
+def line_params(Y1: float, X1: float, Y2: float, X2: float) -> tuple:
+    m = (Y2 - Y1) / (X2 - X1)
+    b = Y1 - m * X1
+    return m, b
+
+
 def liquid_line_params() -> tuple:
-    P1, V1 = 0.05, 0.00105
-    P2, V2 = 10.0, 0.0035
-    m1 = (V2 - V1) / (P2 - P1)
-    b1 = V1 - m1 * P1
-    return m1, b1
+    return line_params(0.05, 0.00105, 10.0, 0.0035)
 
 
 def vapor_line_params() -> tuple:
-    P2, V2 = 10.0, 0.0035
-    P3, V3 = 0.05, 30.0
-    m2 = (V3 - V2) / (P3 - P2)
-    b2 = V2 - m2 * P2
-    return m2, b2
+    return line_params(10.0, 0.0035, 0.05, 30.0)
 
 
 def get_phase_change_data(pressure: float) -> PhaseChangeResponse:
-    m1, b1 = liquid_line_params()
-    m2, b2 = vapor_line_params()
+    m_liquid, b_liquid = liquid_line_params()
+    m_vapor, b_vapor = vapor_line_params()
 
     # Calculate specific volume for liquid and vapor based on the pressure
-    if pressure < 0.05 or pressure > 10:
-        raise HTTPException(
-            status_code=400, detail="Pressure must be between 0.05 and 10 MPa."
-        )
-
-    specific_volume_liquid = round(m1 * pressure + b1, 4)
-    specific_volume_vapor = round(m2 * pressure + b2, 4)
+    specific_volume_liquid = (pressure - b_liquid) / m_liquid
+    specific_volume_vapor = (pressure - b_vapor) / m_vapor
 
     return PhaseChangeResponse(
         specific_volume_liquid=specific_volume_liquid,
